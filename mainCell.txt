@@ -10,7 +10,7 @@ os.makedirs(base_path, exist_ok=True)
 os.chdir(base_path)
 
 # ✅ STEP 3: Install Java 17 (required for MC 1.17+)
-print("🔧 Installing Java 17...")
+print("🔧 Installing Java 21...")
 !apt update -y > /dev/null
 !apt install openjdk-17-jre-headless -y > /dev/null
 !java -version
