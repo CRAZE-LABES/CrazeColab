@@ -1,0 +1,72 @@
+# optional  cell .
+# 📦 Step 1: Install Requirements
+!pip install -q gradio requests
+
+# 📁 Step 2: Mount Drive
+from google.colab import drive
+import os, requests, shutil
+
+drive.mount('/content/drive')
+plugin_path = "/content/drive/MyDrive/mc_server/plugins"
+os.makedirs(plugin_path, exist_ok=True)
+
+# 🔍 Step 3: Modrinth Search + Download
+def search_modrinth_plugins(query):
+    url = f"https://api.modrinth.com/v2/search?query={query}&facets=[[\"project_type:mod\"],[\"categories:server\"]]&limit=10"
+    res = requests.get(url).json()
+    results = []
+    for hit in res.get("hits", []):
+        results.append(f"{hit['title']} | {hit['project_id']} | {hit['slug']}")
+    return "\n".join(results) if results else "❌ No plugins found."
+
+def get_versions(project_id):
+    url = f"https://api.modrinth.com/v2/project/{project_id}/version"
+    res = requests.get(url).json()
+    return [f"{v['version_number']} | {v['id']}" for v in res[:10]]
+
+def download_plugin(version_id):
+    url = f"https://api.modrinth.com/v2/version/{version_id}"
+    res = requests.get(url).json()
+    file_url = res['files'][0]['url']
+    filename = res['files'][0]['filename']
+    dest = os.path.join(plugin_path, filename)
+    with open(dest, "wb") as f:
+        f.write(requests.get(file_url).content)
+    return f"✅ Plugin installed: {filename}"
+
+# 🌐 Step 4: Gradio UI
+import gradio as gr
+
+with gr.Blocks() as plugin_gui:
+    gr.Markdown("# 🧩 Plugin Manager - Modrinth + Spigot (Craze Style)")
+    
+    with gr.Tab("🔎 Modrinth Search & Install"):
+        query = gr.Textbox(label="Search Plugin Name")
+        search_btn = gr.Button("Search")
+        result_box = gr.Textbox(label="Search Results")
+        
+        project_id = gr.Textbox(label="Paste Project ID from above (middle value)")
+        version_btn = gr.Button("Get Versions")
+        version_box = gr.Dropdown(label="Select Version ID", choices=[])
+
+        install_btn = gr.Button("Install Plugin")
+        install_status = gr.Textbox(label="Install Status")
+
+        search_btn.click(search_modrinth_plugins, inputs=query, outputs=result_box)
+        version_btn.click(get_versions, inputs=project_id, outputs=version_box)
+        install_btn.click(download_plugin, inputs=version_box, outputs=install_status)
+
+    with gr.Tab("📝 Manual Spigot Plugin"):
+        spigot_link = gr.Textbox(label="Paste Spigot plugin JAR link (direct)")
+        spigot_name = gr.Textbox(label="Save As (plugin.jar)")
+        def install_spigot(url, name):
+            dest = os.path.join(plugin_path, name)
+            try:
+                with open(dest, "wb") as f:
+                    f.write(requests.get(url).content)
+                return f"✅ Plugin saved as: {name}"
+            except:
+                return "❌ Failed. Make sure it's a direct link ending with .jar"
+        gr.Button("Install").click(install_spigot, inputs=[spigot_link, spigot_name], outputs=install_status)
+
+plugin_gui.launch(share=True)
