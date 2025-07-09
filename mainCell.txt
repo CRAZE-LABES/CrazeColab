@@ -1,0 +1,48 @@
+# ✅ STEP 1: Mount Google Drive
+from google.colab import drive
+import os, urllib.request, json
+
+drive.mount('/content/drive')
+
+# ✅ STEP 2: Setup Server Folder in Drive
+base_path = "/content/drive/MyDrive/mc_server"
+os.makedirs(base_path, exist_ok=True)
+os.chdir(base_path)
+
+# ✅ STEP 3: Install Java 17 (required for MC 1.17+)
+print("🔧 Installing Java 17...")
+!apt update -y > /dev/null
+!apt install openjdk-17-jre-headless -y > /dev/null
+!java -version
+
+# ✅ STEP 4: Choose Minecraft Version
+version = "1.20.1"  # 🔁 Change to any valid Paper version
+server_jar = os.path.join(base_path, "server.jar")
+
+# ✅ STEP 5: Download Paper (only if not installed)
+if not os.path.exists(server_jar):
+    print("⬇️ Downloading PaperMC server...")
+    meta_url = f"https://api.papermc.io/v2/projects/paper/versions/{version}"
+    meta = json.loads(urllib.request.urlopen(meta_url).read())
+    build = meta['builds'][-1]
+    jar_name = f"paper-{version}-{build}.jar"
+    jar_url = f"https://api.papermc.io/v2/projects/paper/versions/{version}/builds/{build}/downloads/{jar_name}"
+    urllib.request.urlretrieve(jar_url, jar_name)
+    os.rename(jar_name, "server.jar")
+    print("✅ server.jar downloaded and ready.")
+else:
+    print("✅ server.jar already exists — using existing server.")
+
+# ✅ STEP 6: Auto-create eula.txt
+if not os.path.exists("eula.txt"):
+    with open("eula.txt", "w") as f:
+        f.write("eula=true\n")
+    print("📄 eula.txt created.")
+
+# ✅ STEP 7: Show Public IP (info only — not usable for multiplayer)
+print("🌐 Your Public IP (for display only):")
+!curl -s https://api.ipify.org
+
+# ✅ STEP 8: Run the Minecraft server (from mc_server in Drive)
+print("🚀 Starting Minecraft server with 11GB RAM...")
+!cd "{base_path}" && java -Xmx11G -Xms11G -jar server.jar --port 25565 nogui
